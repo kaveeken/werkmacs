@@ -1,0 +1,18 @@
+* compilatie
+
+~git clone http://git.savannah.gnu.org/r/emacs.git emacs-29~
+
+~./autogen~
+
+~./configure $flags~
+
+configure flags:
+~--with-native-compilation --with-json --with-imagemagick --with-pgtk --with-xwidgets 'CFLAGS=-O2 -march=native'~
+
+~make && make install~
+
+misschien ook daemon
+
+* plists
+
+~export LSP_USE_PLISTS=true~ voor eerste start (of delet lsp packages, restart).
