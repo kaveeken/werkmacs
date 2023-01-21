@@ -1,0 +1,165 @@
+* hints, completion etc
+#+begin_src emacs-lisp
+  (use-package which-key
+    :ensure t
+    :diminish which-key-mode
+    :init
+    (which-key-mode))
+
+  (use-package company-quickhelp
+    :ensure t
+    :defer t
+    :init (add-hook 'global-company-mode-hook #'company-quickhelp-mode)
+    :config
+    (setq company-quickhelp-delay 0.4))
+
+  (use-package helm
+    :ensure t
+    :bind (:map global-map
+		([remap find-file] . #'helm-find-files)
+		([remap execute-extended-command] . #'helm-M-x)
+		([remap switch-to-buffer] . #'helm-mini)))
+
+  ;; etc
+  (use-package async
+    :ensure t
+    :init
+    (dired-async-mode 1))
+  (setq native-comp-deferred-compilation t)
+  (setq package-native-compile t)
+  (setq comp-async-report-warnings-errors nil)
+
+  (setq ring-bell-function 'ignore)
+  (setq column-number-mode t) ; show column number in modeline
+
+  (fset 'yes-or-no-p 'y-or-n-p)
+  (global-set-key (kbd "<f5>") 'revert-buffer)
+#+end_src
+* lsp
+#+begin_src emacs-lisp
+  (use-package lsp-mode
+    :ensure t
+    :commands lsp
+    :custom (lsp-auto-guess-root t)
+	    (lsp-prefer-flymake nil)
+	    (lsp-headerline-breadcrumb-enable nil)
+	    (lsp-signature-auto-activate nil)
+	    (lsp-ui-doc-show-with-cursor nil)
+	    (lsp-enable-on-type-formatting nil)
+	    (lsp-use-plists t))
+  (add-hook 'c-mode-hook 'lsp)
+  (add-hook 'c++-mode-hook 'lsp)
+
+  ;; idk about these
+  (setq gc-cons-threshold (* 100 1024 1024)
+	read-process-output-max (* 1024 1024)
+	treemacs-space-between-root-nodes nil
+	company-idle-delay 0.0
+	company-minimum-prefix-length 1
+	lsp-idle-delay 0.1)  ;; clangd is fast
+
+  (with-eval-after-load 'lsp-mode
+    (add-hook 'lsp-mode-hook #'lsp-enable-which-key-integration)
+    (require 'dap-cpptools)
+    (yas-global-mode))
+#+end_src
+
+* evil-mode
+
+evil and evil-snipe. undo-tree.
+
+#+BEGIN_SRC emacs-lisp
+(use-package evil-snipe
+  :ensure t
+  :init
+  (add-hook 'evil-mode (evil-snipe-mode +1))
+  :config
+  (evil-snipe-override-mode +1))
+
+(use-package undo-tree
+  :ensure t)
+
+(use-package evil
+  :ensure t
+  :init
+  (setq evil-want-C-i-jump nil)
+  :config
+  (evil-mode)
+  (setq evil-undo-system 'undo-tree)
+  (global-undo-tree-mode) ;; evil-undo-system needs to be set to undo-tree
+  (define-key evil-insert-state-map (kbd "C-n") nil) ;; interfere with
+  (define-key evil-insert-state-map (kbd "C-p") nil) ;; company
+  (define-key evil-normal-state-map (kbd "C-b") 'evil-scroll-up))
+#+END_SRC
+
+** evil-friendly eval bindings
+
+elisp evaluations that don't require cursor behind expression
+
+#+BEGIN_SRC emacs-lisp
+(define-prefix-command 'eval-map)
+(global-set-key (kbd "C-x C-x") 'eval-map)
+(global-set-key (kbd "C-x C-x e") 'eval-defun)
+(global-set-key (kbd "C-x C-x r") 'eval-and-replace)
+
+(defun eval-and-replace ()
+  "Replace the sexp surrounding the cursor with its value.
+  Does not work when cursor is on opening paren."
+  (interactive)
+  (evil-jump-item)  ;; go to open paren
+  (evil-jump-item)  ;; go to close paren
+  (forward-char)    ;; move past close paren
+  (backward-kill-sexp)
+  (condition-case nil
+      (prin1 (eval (read (current-kill 0)))
+             (current-buffer))
+    (error (message "Invalid expression")
+           (insert (current-kill 0)))))
+#+END_SRC
+
+* looks
+
+#+begin_src emacs-lisp
+   ;;(use-package doom-modeline
+     ;;:ensure t
+     ;;:init (doom-modeline-mode 1))
+
+   (load-theme 'modus-operandi t)
+
+   (global-display-line-numbers-mode 1)
+   (setq display-line-numbers-type 'relative)
+   (set-fringe-mode 0)
+   (scroll-bar-mode -1)
+   (tool-bar-mode -1)
+
+   (use-package dashboard
+     :ensure t
+     :diminish dashboard-mode
+     :config
+     ;(setq dashboard-banner-logo-title "your custom text")
+     ;(setq dashboard-startup-banner "/path/to/image")
+     (setq dashboard-items '((recents  . 10)
+			     (bookmarks . 10)))
+     (dashboard-setup-startup-hook))
+
+   (setq initial-buffer-choice (lambda () (get-buffer-create "*dashboard*")))
+#+end_src
+
+* AAAAAA
+#+begin_src emacs-lisp
+  (setq package-selected-packages '(lsp-mode yasnippet lsp-treemacs helm-lsp
+      projectile hydra flycheck company which-key helm-xref dap-mode))
+
+  (when (cl-find-if-not #'package-installed-p package-selected-packages)
+    (package-refresh-contents)
+    (mapc #'package-install package-selected-packages))
+
+  (defhydra hydra-other-window (global-map "C-x")
+    "hydra other window"
+    ("o" (other-window 1) "Next window"))
+
+  (with-eval-after-load 'c++-mode 
+    (define-prefix-command 'debug-map)
+    (define-key c++-mode-map (kbd "C-c C-d") 'debug-map)
+    (define-key c++-mode-map (kbd "C-c C-d p") 'dap-breakpoint-add))
+#+end_src
